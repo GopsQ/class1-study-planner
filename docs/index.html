@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Class 1 Study Planner & Grammar Fun Zone</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📚</text></svg>">
+    <meta name="description" content="Interactive study planner and grammar exercises for Class 1 students" />
+    <meta name="theme-color" content="#7C3AED" />
+    <link rel="manifest" href="data:application/json;base64,eyJuYW1lIjoiQ2xhc3MgMSBTdHVkeSBQbGFubmVyIiwic2hvcnRfbmFtZSI6IlN0dWR5IFBsYW5uZXIiLCJzdGFydF91cmwiOiIuIiwiZGlzcGxheSI6InN0YW5kYWxvbmUiLCJ0aGVtZV9jb2xvciI6IiM3QzNBRUQiLCJiYWNrZ3JvdW5kX2NvbG9yIjoiI0ZGRjlGMCJ9" />
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { font-family: 'Nunito', 'Segoe UI', sans-serif; background: #FFF9F0; overflow-x: hidden; }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 4px; }
+        button { font-family: inherit; }
+        input { font-family: inherit; }
+        @media (max-width: 600px) { .hide-mobile { display: none !important; } }
+    </style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+
+// ─── STORAGE POLYFILL ───
+const store = {};
+if (!window.storage) {
+  window.storage = {
+    async get(key) {
+      const val = localStorage.getItem('c1_' + key);
+      if (val !== null) return { key, value: val };
+      throw new Error('Not found');
+    },
+    async set(key, value) {
+      localStorage.setItem('c1_' + key, value);
+      return { key, value };
+    },
+    async delete(key) {
+      localStorage.removeItem('c1_' + key);
+      return { key, deleted: true };
+    },
+    async list(prefix) {
+      const keys = Object.keys(localStorage).filter(k => k.startsWith('c1_' + (prefix || ''))).map(k => k.replace('c1_', ''));
+      return { keys };
+    }
+  };
+}
+
+const { useState, useEffect } = React;
+
+// ═══════════════════════════════════════
+// COLOR CONSTANTS
+// ═══════════════════════════════════════
+const C = {
+  bg:"#FFF9F0",card:"#FFFFFF",dark:"#1A1A2E",mid:"#555770",light:"#94A3B8",
+  border:"#E8E4DF",purple:"#7C3AED",purpleBg:"#F3F0FF",teal:"#0D9488",tealBg:"#E6FFFA",
+  orange:"#E8590C",orangeBg:"#FFF4EC",red:"#E03131",redBg:"#FFF0F0",blue:"#1C7ED6",
+  blueBg:"#E7F5FF",green:"#2B8A3E",greenBg:"#E6FCF5",yellow:"#E67700",yellowBg:"#FFF9DB",
+  pink:"#C2255C",pinkBg:"#FFF0F6",gold:"#F59F00",accent1:"#FF6B6B",accent2:"#4ECDC4",
+  accent3:"#FFE66D",accent4:"#A78BFA",accent5:"#F97316",accent6:"#38BDF8",
+  highlight:"#FFF3CD",textLight:"#636E72",
+};
+
+// ═══════════════════════════════════════
+// 1. STUDY PLANNER
+// ═══════════════════════════════════════
+const weekdayRoutine = [
+  {time:"1:00 PM",activity:"Arrive home, wash up, change clothes",type:"habit",duration:"15 min",icon:"🏠"},
+  {time:"1:15 PM",activity:"Lunch + relaxed chat about school day",type:"meal",duration:"30 min",icon:"🍛"},
+  {time:"1:45 PM",activity:"Free play / rest / quiet time",type:"free",duration:"30 min",icon:"🧸"},
+  {time:"2:15 PM",activity:"Session 1: Handwriting / Writing",type:"study",duration:"12-15 min",icon:"✏️"},
+  {time:"2:30 PM",activity:"Movement Break — dance, jump, run",type:"break",duration:"5 min",icon:"🤸"},
+  {time:"2:35 PM",activity:"Session 2: Reading / Phonics",type:"study",duration:"10-12 min",icon:"📖"},
+  {time:"2:50 PM",activity:"Fun Break — coloring, stickers",type:"break",duration:"10 min",icon:"🎨"},
+  {time:"3:00 PM",activity:"Session 3: Maths or EVS",type:"study",duration:"10-12 min",icon:"🔢"},
+  {time:"3:15 PM",activity:"Healthy snack time",type:"meal",duration:"15 min",icon:"🍎"},
+  {time:"3:30 PM",activity:"Outdoor play / sports / park",type:"play",duration:"60 min",icon:"⚽"},
+  {time:"4:30 PM",activity:"Bath & freshen up",type:"habit",duration:"20 min",icon:"🛁"},
+  {time:"5:00 PM",activity:"Free play / TV / creative play",type:"free",duration:"45 min",icon:"🎮"},
+  {time:"5:45 PM",activity:"Bedtime story (Hindi/English)",type:"study",duration:"10-15 min",icon:"📚"},
+  {time:"6:00 PM",activity:"Dinner + family time",type:"meal",duration:"45 min",icon:"🍽️"},
+  {time:"7:00 PM",activity:"Wind down, sleep by 7:30-8 PM",type:"habit",duration:"30 min",icon:"🌙"},
+];
+
+const weekendRoutine = [
+  {time:"7:30 AM",activity:"Wake up, morning routine",type:"habit",duration:"30 min",icon:"☀️"},
+  {time:"8:00 AM",activity:"Breakfast",type:"meal",duration:"30 min",icon:"🥞"},
+  {time:"8:30 AM",activity:"Outdoor play / nature walk",type:"play",duration:"60 min",icon:"🌳"},
+  {time:"9:30 AM",activity:"Fun Study: Art/Craft/Moral Stories",type:"study",duration:"20 min",icon:"🖍️"},
+  {time:"10:00 AM",activity:"Revision game: flashcards, puzzles",type:"study",duration:"15 min",icon:"🧩"},
+  {time:"10:15 AM",activity:"Snack + free play",type:"free",duration:"45 min",icon:"🧃"},
+  {time:"11:00 AM",activity:"Read-aloud (longer story)",type:"study",duration:"15-20 min",icon:"📖"},
+  {time:"11:30 AM",activity:"Free time: hobbies, music",type:"free",duration:"30 min",icon:"🎵"},
+  {time:"12:00 PM",activity:"Lunch",type:"meal",duration:"30 min",icon:"🍛"},
+  {time:"12:30 PM",activity:"Rest / quiet time",type:"free",duration:"60 min",icon:"😴"},
+  {time:"1:30 PM",activity:"Family activity / outing",type:"play",duration:"90 min",icon:"👨‍👩‍👧"},
+  {time:"Evening",activity:"Same as weekday evening",type:"habit",duration:"",icon:"🌙"},
+];
+
+const weeklyFocus = [
+  {day:"Monday",emoji:"🔤",focus:"Phonics + Numbers",s1:"Practice 2 letters (Aa, Bb)",s2:"CVC phonics (cat, bat, sun)",s3:"Number writing 1-20",tip:"Use magnetic letters on fridge!"},
+  {day:"Tuesday",emoji:"📝",focus:"Hindi + Shapes",s1:"Hindi varnamala (2 letters)",s2:"Hindi words read-aloud",s3:"Shapes recognition & drawing",tip:"Go on a shape hunt at home!"},
+  {day:"Wednesday",emoji:"📖",focus:"English Reading + Addition",s1:"Sight words writing",s2:"Read a short story aloud",s3:"Simple addition with objects",tip:"Use biscuits for addition!"},
+  {day:"Thursday",emoji:"🌍",focus:"EVS / GK + Hindi",s1:"Sentence copying",s2:"EVS topic discussion",s3:"Hindi matra tracing",tip:"Draw pictures for EVS topic!"},
+  {day:"Friday",emoji:"🎉",focus:"Fun Revision Day",s1:"Free drawing + label",s2:"Flashcard game / quiz",s3:"Art / craft / moral story",tip:"Sticker reward for the week!"},
+  {day:"Saturday",emoji:"🖍️",focus:"Creative + Light Revision",s1:"Creative art project",s2:"Long story read-aloud",s3:"Light revision (optional)",tip:"Visit a library or bookshop!"},
+  {day:"Sunday",emoji:"🌈",focus:"REST DAY",s1:"Family outing, free play",s2:"Bedtime story only",s3:"Prepare for Monday",tip:"Rest is essential for the brain!"},
+];
+
+const funActivities = [
+  {name:"Letter Hunt",desc:"Find objects starting with a given letter",cost:"Free",subject:"Phonics",emoji:"🔍"},
+  {name:"Rice Tray Writing",desc:"Trace letters with finger on rice/salt tray",cost:"Free",subject:"Handwriting",emoji:"🍚"},
+  {name:"Grocery Maths",desc:"Count fruits, add vegetables while shopping",cost:"Free",subject:"Maths",emoji:"🛒"},
+  {name:"Story Retelling",desc:"Child retells a story in their own words",cost:"Free",subject:"Reading",emoji:"🗣️"},
+  {name:"Sight Word Bingo",desc:"Bingo cards with common words",cost:"Free",subject:"Reading",emoji:"🎯"},
+  {name:"Playdough Letters",desc:"Roll playdough into letter shapes",cost:"Low",subject:"Handwriting",emoji:"🎨"},
+  {name:"Coin Counting",desc:"Use real coins for addition practice",cost:"Free",subject:"Maths",emoji:"🪙"},
+  {name:"Hindi Label Walk",desc:"Stick Hindi word labels on objects at home",cost:"Free",subject:"Hindi",emoji:"🏷️"},
+  {name:"Flashcard Race",desc:"Spread cards on floor, child runs to grab",cost:"Free",subject:"All",emoji:"🏃"},
+  {name:"Weekend Cooking",desc:"Measuring, counting, reading steps together",cost:"Low",subject:"Maths+Reading",emoji:"👨‍🍳"},
+];
+
+const parentTips = [
+  {title:"Handling Resistance",icon:"🛡️",tips:["Never force — take a 10-min play break and try again gently.","Give choices: 'Writing first or maths first?'","Use a timer: 'Just 10 minutes, then play!'","Bad day? Skip study entirely. One day off won't hurt."]},
+  {title:"Motivation & Rewards",icon:"⭐",tips:["Star chart: 5 stars = a small treat.","Praise effort, not perfection.","Celebrate small wins — do a happy dance!","Never compare with other children."]},
+  {title:"Tracking Progress",icon:"📊",tips:["Simple weekly checklist (done/not done).","Photo journal: monthly photos of work.","Talk to teacher monthly to align topics.","Watch for consistent struggles over 3-4 weeks."]},
+  {title:"When to Seek Help",icon:"🩺",tips:["Letter reversals (b/d) beyond age 7 → specialist.","No reading improvement after 2-3 months → check vision.","Daily writing tears/pain → occupational therapy.","Trust your instinct. Early support is always better."]},
+  {title:"Golden Rules",icon:"✨",tips:["Same time, same place every day.","Sit WITH the child for first few months.","Keep study area clutter-free.","End every session positively."]},
+];
+
+const typeColors = {
+  study:{bg:"#EDE9FE",text:"#7C3AED",label:"Study"},break:{bg:"#ECFDF5",text:"#059669",label:"Break"},
+  meal:{bg:"#FFF7ED",text:"#EA580C",label:"Meal"},play:{bg:"#EFF6FF",text:"#2563EB",label:"Play"},
+  free:{bg:"#FDF2F8",text:"#DB2777",label:"Free"},habit:{bg:"#F5F5F4",text:"#78716C",label:"Habit"},
+};
+
+function Badge({type}) {
+  const c = typeColors[type];
+  return React.createElement('span',{style:{fontSize:9,fontWeight:700,padding:"2px 7px",borderRadius:20,background:c.bg,color:c.text,textTransform:"uppercase",letterSpacing:0.5}},c.label);
+}
+
+function RoutineList({items,title,subtitle}) {
+  return React.createElement('div',null,
+    React.createElement('h3',{style:{fontSize:16,fontWeight:800,color:C.dark,margin:"0 0 2px"}},title),
+    React.createElement('p',{style:{fontSize:12,color:C.mid,margin:"0 0 12px"}},subtitle),
+    React.createElement('div',{style:{display:"flex",flexDirection:"column",gap:4}},
+      items.map((item,i) => React.createElement('div',{key:i,style:{display:"flex",alignItems:"center",gap:8,padding:"7px 10px",background:i%2===0?"#FAFAF8":"#FFF",borderRadius:8,border:`1px solid ${C.border}`}},
+        React.createElement('span',{style:{fontSize:20,width:28,textAlign:"center",flexShrink:0}},item.icon),
+        React.createElement('div',{style:{flex:1,minWidth:0}},
+          React.createElement('div',{style:{fontSize:12,fontWeight:700,color:C.dark}},item.activity),
+          item.duration && React.createElement('span',{style:{fontSize:10,color:C.light}},item.duration)
+        ),
+        React.createElement('div',{style:{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:3,flexShrink:0}},
+          React.createElement('span',{style:{fontSize:10,fontWeight:600,color:C.accent1,fontFamily:"monospace"}},item.time),
+          React.createElement(Badge,{type:item.type})
+        )
+      ))
+    )
+  );
+}
+
+function StudyPlanner() {
+  const [tab, setTab] = useState("routine");
+  const [routineView, setRoutineView] = useState("weekday");
+
+  const tabs = [{id:"routine",label:"Daily Routine",e:"🌞"},{id:"weekly",label:"Weekly Focus",e:"📅"},{id:"tips",label:"Parent Tips",e:"💡"},{id:"fun",label:"Fun Activities",e:"🎨"}];
+
+  return React.createElement('div',null,
+    React.createElement('div',{style:{display:"flex",gap:4,marginBottom:14,overflowX:"auto",WebkitOverflowScrolling:"touch",paddingBottom:2}},
+      tabs.map(t => React.createElement('button',{key:t.id,onClick:()=>setTab(t.id),style:{padding:"7px 12px",borderRadius:8,border:"none",cursor:"pointer",fontWeight:700,fontSize:11,whiteSpace:"nowrap",fontFamily:"inherit",background:tab===t.id?C.dark:C.card,color:tab===t.id?"#FFF":C.mid,boxShadow:tab===t.id?"0 3px 8px rgba(0,0,0,0.15)":"0 1px 2px rgba(0,0,0,0.06)"}},t.e+" "+t.label))
+    ),
+
+    tab==="routine" && React.createElement('div',null,
+      React.createElement('div',{style:{display:"flex",gap:6,marginBottom:14}},
+        ["weekday","weekend"].map(v => React.createElement('button',{key:v,onClick:()=>setRoutineView(v),style:{padding:"7px 16px",borderRadius:20,border:"none",cursor:"pointer",fontWeight:700,fontSize:12,fontFamily:"inherit",background:routineView===v?C.accent2:"#F0EDED",color:routineView===v?"#FFF":C.mid}},v==="weekday"?"🏫 Weekday":"🌈 Weekend"))
+      ),
+      routineView==="weekday" ?
+        React.createElement(RoutineList,{items:weekdayRoutine,title:"After-School Weekday Routine",subtitle:"~35-40 min study in 3 short sessions + bedtime story"}) :
+        React.createElement(RoutineList,{items:weekendRoutine,title:"Weekend Routine (Saturday)",subtitle:"Light & creative. Sunday = full rest day!"})
+    ),
+
+    tab==="weekly" && React.createElement('div',{style:{display:"flex",flexDirection:"column",gap:8}},
+      weeklyFocus.map((d,i) => React.createElement('div',{key:i,style:{padding:12,borderRadius:12,background:C.card,border:`1px solid ${C.border}`,borderLeft:`4px solid ${[C.accent1,C.accent2,C.accent3,C.accent4,C.accent5,C.accent6,"#94A3B8"][i]}`}},
+        React.createElement('div',{style:{display:"flex",alignItems:"center",gap:6,marginBottom:8}},
+          React.createElement('span',{style:{fontSize:20}},d.emoji),
+          React.createElement('div',null,
+            React.createElement('div',{style:{fontSize:13,fontWeight:800,color:C.dark}},d.day),
+            React.createElement('div',{style:{fontSize:11,color:C.accent1,fontWeight:700}},d.focus)
+          )
+        ),
+        d.day!=="Sunday" && React.createElement('div',{style:{display:"flex",flexDirection:"column",gap:4,marginBottom:8}},
+          React.createElement('div',{style:{fontSize:11,padding:"5px 8px",background:C.purpleBg,borderRadius:6}},React.createElement('b',null,"Writing: "),d.s1),
+          React.createElement('div',{style:{fontSize:11,padding:"5px 8px",background:C.greenBg,borderRadius:6}},React.createElement('b',null,"Reading: "),d.s2),
+          React.createElement('div',{style:{fontSize:11,padding:"5px 8px",background:C.orangeBg,borderRadius:6}},React.createElement('b',null,"Maths/Other: "),d.s3)
+        ),
+        React.createElement('div',{style:{fontSize:10,color:"#92400E",background:C.highlight,padding:"5px 8px",borderRadius:6,fontStyle:"italic"}},"💡 "+d.tip)
+      ))
+    ),
+
+    tab==="tips" && React.createElement('div',{style:{display:"flex",flexDirection:"column",gap:12}},
+      parentTips.map((s,i) => React.createElement('div',{key:i,style:{padding:12,borderRadius:12,background:C.card,border:`1px solid ${C.border}`}},
+        React.createElement('div',{style:{display:"flex",alignItems:"center",gap:6,marginBottom:8}},
+          React.createElement('span',{style:{fontSize:22}},s.icon),
+          React.createElement('h4',{style:{fontSize:14,fontWeight:800,color:C.dark,margin:0}},s.title)
+        ),
+        React.createElement('div',{style:{display:"flex",flexDirection:"column",gap:5}},
+          s.tips.map((tip,j) => React.createElement('div',{key:j,style:{fontSize:12,lineHeight:"1.5",color:C.dark,padding:"6px 10px",background:"#FAFAF8",borderRadius:8,borderLeft:`3px solid ${[C.accent1,C.accent2,C.accent4,C.accent5][j%4]}`}},tip))
+        )
+      ))
+    ),
+
+    tab==="fun" && React.createElement('div',null,
+      React.createElement('h3',{style:{fontSize:16,fontWeight:800,color:C.dark,margin:"0 0 2px"}},"Fun Learning Activities"),
+      React.createElement('p',{style:{fontSize:12,color:C.mid,margin:"0 0 12px"}},"Free or low-cost. Replace any study session with these!"),
+      React.createElement('div',{style:{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(240px,1fr))",gap:8}},
+        funActivities.map((a,i) => React.createElement('div',{key:i,style:{padding:12,borderRadius:12,background:C.card,border:`1px solid ${C.border}`}},
+          React.createElement('div',{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}},
+            React.createElement('span',{style:{fontSize:20}},a.emoji),
+            React.createElement('span',{style:{fontSize:9,fontWeight:700,padding:"2px 6px",borderRadius:12,background:a.cost==="Free"?C.greenBg:C.orangeBg,color:a.cost==="Free"?C.green:C.orange}},a.cost)
+          ),
+          React.createElement('div',{style:{fontSize:13,fontWeight:800,color:C.dark}},a.name),
+          React.createElement('div',{style:{fontSize:11,color:C.mid,lineHeight:"1.4",marginTop:2}},a.desc),
+          React.createElement('span',{style:{fontSize:9,fontWeight:700,color:C.purple,padding:"2px 6px",background:C.purpleBg,borderRadius:12,display:"inline-block",marginTop:4}},a.subject)
+        ))
+      )
+    )
+  );
+}
+
+// ═══════════════════════════════════════
+// 2. GRAMMAR FUN ZONE (EXERCISES)
+// ═══════════════════════════════════════
+const CHAPTERS = [
+  {id:1,title:"The Sentence",icon:"📝",color:C.purple,
+    tip:"A sentence makes complete sense. Starts with capital letter, ends with full stop.\n\nAsk: Does it tell us WHO and WHAT? If yes → sentence!\n\nDaily: Pick any picture, say one full sentence about it.",
+    exercises:[
+      {type:"yesno",q:"Is this a sentence? — 'The cat is sleeping.'",a:"yes",explain:"Makes complete sense — WHO (cat) + WHAT (sleeping). ✓"},
+      {type:"yesno",q:"Is this a sentence? — 'Under the big'",a:"no",explain:"Incomplete! Under the big WHAT? Not a sentence."},
+      {type:"yesno",q:"Is this a sentence? — 'Birds fly in the sky.'",a:"yes",explain:"WHO (birds) + WHAT (fly in sky). Complete! ✓"},
+      {type:"yesno",q:"Is this a sentence? — 'Very happy and'",a:"no",explain:"Who is happy? And what? Incomplete!"},
+      {type:"yesno",q:"Is this a sentence? — 'Please close the door.'",a:"yes",explain:"Makes sense — it's a request. ✓"},
+      {type:"mcq",q:"Which is a complete sentence?",options:["The big red","She runs fast.","Running and jumping","Blue sky the"],a:1,explain:"'She runs fast' has WHO (she) + WHAT (runs fast)."},
+      {type:"mcq",q:"Which is NOT a sentence?",options:["I am happy.","The tall tree","He reads a book.","Dogs bark."],a:1,explain:"'The tall tree' — what about it? It's incomplete."},
+      {type:"yesno",q:"Is 'Wow!' a sentence?",a:"yes",explain:"Yes! Exclamations like 'Wow!' express a complete feeling."},
+    ]},
+  {id:2,title:"Two Parts of a Sentence",icon:"✂️",color:C.teal,
+    tip:"Naming Part (Subject) = WHO/WHAT\nDoing Part (Predicate) = WHAT about them\n\nClap between the two parts: 'The dog [CLAP] runs fast.'",
+    exercises:[
+      {type:"mcq",q:"In 'The dog barks loudly' — naming part is?",options:["barks loudly","The dog","loudly","dog barks"],a:1,explain:"'The dog' is WHO we talk about."},
+      {type:"mcq",q:"In 'My mother cooks food' — doing part is?",options:["My mother","cooks food","My","food"],a:1,explain:"'Cooks food' = what she does."},
+      {type:"mcq",q:"In 'The tall tree gives shade' — naming part?",options:["The tall tree","gives shade","tall","shade"],a:0,explain:"Full naming part includes 'The tall tree'."},
+      {type:"mcq",q:"In 'Birds fly high' — doing part?",options:["Birds","fly high","high","fly"],a:1,explain:"'Fly high' tells what birds do."},
+      {type:"mcq",q:"Which sentence has correct two parts?",options:["Cat. Sleeping.","The cat is sleeping.","Sleeping cat the.","Cat the sleeping."],a:1,explain:"'The cat' (naming) + 'is sleeping' (doing). Perfect!"},
+      {type:"mcq",q:"In 'She reads books' — 'She' is the?",options:["Doing part","Naming part","Describing word","Joining word"],a:1,explain:"'She' is WHO — the naming part."},
+    ]},
+  {id:3,title:"Naming Words (Nouns)",icon:"🏷️",color:C.orange,
+    tip:"Nouns = names of people, animals, places, things.\n\nFun trick: If you can put 'a' or 'the' before it, it's a noun!\n\nGame: 'I Spy a naming word!' at home.",
+    exercises:[
+      {type:"mcq",q:"Which is a naming word?",options:["run","beautiful","elephant","quickly"],a:2,explain:"Elephant = name of an animal. Noun!"},
+      {type:"mcq",q:"Find the noun: 'The girl reads a book.'",options:["reads","The","girl","a"],a:2,explain:"Girl (person) and book (thing) are nouns!"},
+      {type:"mcq",q:"Which is NOT a noun?",options:["table","happy","river","cat"],a:1,explain:"'Happy' describes something — it's an adjective."},
+      {type:"yesno",q:"Is 'Mumbai' a naming word?",a:"yes",explain:"Yes! Mumbai = name of a city/place. Noun!"},
+      {type:"mcq",q:"How many nouns in 'The boy and his dog went to the park'?",options:["2","3","4","1"],a:1,explain:"Boy (person) + dog (animal) + park (place) = 3!"},
+      {type:"mcq",q:"Which group has ALL nouns?",options:["cat, run, big","book, school, teacher","happy, blue, tall","eat, sleep, play"],a:1,explain:"Book, school, teacher — all naming words!"},
+      {type:"yesno",q:"Is 'running' a naming word?",a:"no",explain:"Running = doing word (verb), not a noun."},
+    ]},
+  {id:4,title:"Common & Special Names",icon:"👑",color:C.pink,
+    tip:"Common = any (boy, city, river)\nSpecial/Proper = specific, CAPITAL letter (Rahul, Delhi, Ganga)\n\nGame: Parent says common, child says special!",
+    exercises:[
+      {type:"mcq",q:"Which is a SPECIAL name?",options:["boy","Delhi","river","school"],a:1,explain:"Delhi = specific city name. Capital D!"},
+      {type:"yesno",q:"Is 'girl' a special name?",a:"no",explain:"'Girl' = any girl = common name."},
+      {type:"yesno",q:"Should 'sunday' have a capital letter?",a:"yes",explain:"Days are special names: Sunday, Monday..."},
+      {type:"mcq",q:"Which pair is correct?",options:["common: dog, special: Tommy","common: Raj, special: boy","common: India, special: country","common: Ganga, special: river"],a:0,explain:"Dog = any dog (common), Tommy = specific dog (special)."},
+      {type:"mcq",q:"Which needs a capital letter?",options:["table","mumbai","animal","flower"],a:1,explain:"Mumbai = specific city = Special name = Capital M!"},
+      {type:"yesno",q:"Is 'January' a special name?",a:"yes",explain:"Yes! Months are special names with capital letters."},
+    ]},
+  {id:5,title:"One and Many (Plurals)",icon:"🐱🐱",color:C.blue,
+    tip:"Most: add -s (cat→cats)\nEnding s/sh/ch/x: add -es (box→boxes)\nEnding y: change to -ies (baby→babies)\nSpecial: man→men, child→children",
+    exercises:[
+      {type:"mcq",q:"Plural of 'cat'?",options:["cats","cates","caties","cat"],a:0,explain:"Just add -s! Cat → Cats."},
+      {type:"mcq",q:"Plural of 'box'?",options:["boxs","boxes","boxies","boxing"],a:1,explain:"Ends in x → add -es. Box → Boxes."},
+      {type:"mcq",q:"Plural of 'baby'?",options:["babys","babyes","babies","baby"],a:2,explain:"Ends in y → change to -ies. Baby → Babies."},
+      {type:"mcq",q:"Plural of 'man'?",options:["mans","men","manes","manies"],a:1,explain:"Special word! Man → Men."},
+      {type:"mcq",q:"Plural of 'leaf'?",options:["leafs","leaves","leafes","leafies"],a:1,explain:"Ends in -f → changes to -ves. Leaf → Leaves."},
+      {type:"yesno",q:"Is 'children' the plural of 'child'?",a:"yes",explain:"Yes! Child → Children. Special plural."},
+      {type:"mcq",q:"Which plural is WRONG?",options:["dogs","churchs","trees","pens"],a:1,explain:"Church ends in -ch → churches (not churchs)."},
+      {type:"mcq",q:"Plural of 'tooth'?",options:["tooths","toothes","teeth","teeths"],a:2,explain:"Tooth → Teeth. Another special one!"},
+    ]},
+  {id:6,title:"He or She (Gender)",icon:"👦👧",color:C.green,
+    tip:"Masculine = male (boy, king, lion)\nFeminine = female (girl, queen, lioness)\n\nSome add -ess: lion→lioness\nSome change: boy→girl, uncle→aunt",
+    exercises:[
+      {type:"mcq",q:"Feminine of 'king'?",options:["kingess","queen","kings","princess"],a:1,explain:"King → Queen. Different words!"},
+      {type:"mcq",q:"Feminine of 'brother'?",options:["brothress","sister","brothers","mother"],a:1,explain:"Brother → Sister."},
+      {type:"yesno",q:"Is 'actress' feminine of 'actor'?",a:"yes",explain:"Yes! Actor + ess = Actress."},
+      {type:"mcq",q:"Feminine of 'prince'?",options:["princes","princess","princese","princesss"],a:1,explain:"Prince → Princess."},
+      {type:"mcq",q:"Which word works for BOTH genders?",options:["king","doctor","sister","uncle"],a:1,explain:"Doctor can be male or female!"},
+      {type:"mcq",q:"Masculine of 'hen'?",options:["cock","rooster","he-hen","Both A and B"],a:3,explain:"Hen → Cock or Rooster. Both correct!"},
+    ]},
+  {id:7,title:"Pronouns",icon:"👈",color:C.purple,
+    tip:"I=myself, He=boy/man, She=girl/woman\nIt=thing/animal, They=many people\nWe=me+others, You=person I'm talking to",
+    exercises:[
+      {type:"mcq",q:"Riya is kind. ___ helps everyone.",options:["He","She","It","They"],a:1,explain:"Riya = girl → She."},
+      {type:"mcq",q:"The book is red. ___ is on the table.",options:["He","She","It","They"],a:2,explain:"Book = thing → It."},
+      {type:"mcq",q:"Ram and Shyam play cricket. ___ are friends.",options:["He","She","It","They"],a:3,explain:"Two people → They."},
+      {type:"mcq",q:"My father teaches. ___ is kind.",options:["He","She","It","They"],a:0,explain:"Father = man → He."},
+      {type:"mcq",q:"Meera and I went out. ___ had fun.",options:["I","She","We","They"],a:2,explain:"Me + another person = We."},
+      {type:"mcq",q:"___ am a student.",options:["I","He","She","You"],a:0,explain:"Talking about yourself = I."},
+      {type:"mcq",q:"Stars twinkle. ___ are bright.",options:["It","He","She","They"],a:3,explain:"Stars = many things → They."},
+    ]},
+  {id:8,title:"Articles (A, An, The)",icon:"📰",color:C.teal,
+    tip:"A = consonant SOUND (a cat, a university)\nAn = vowel SOUND (an apple, an hour)\nThe = specific/unique (the sun, the moon)\n\nTrick: Listen to the SOUND, not the letter!",
+    exercises:[
+      {type:"mcq",q:"___ apple a day...",options:["A","An","The"],a:1,explain:"Apple starts with 'a' sound → An."},
+      {type:"mcq",q:"I saw ___ elephant.",options:["a","an","the"],a:1,explain:"Elephant starts with 'e' sound → an."},
+      {type:"mcq",q:"She is ___ good girl.",options:["a","an","the"],a:0,explain:"Good starts with 'g' sound → a."},
+      {type:"mcq",q:"___ sun rises in the east.",options:["A","An","The"],a:2,explain:"Only one sun → The."},
+      {type:"yesno",q:"Is 'an umbrella' correct?",a:"yes",explain:"Umbrella starts with 'u' sound → an. ✓"},
+      {type:"mcq",q:"___ moon is beautiful.",options:["A","An","The"],a:2,explain:"Only one moon → The."},
+      {type:"mcq",q:"He ate ___ orange.",options:["a","an","the"],a:1,explain:"Orange starts with 'o' sound → an."},
+    ]},
+  {id:9,title:"Describing Words",icon:"🌈",color:C.orange,
+    tip:"Adjectives tell about nouns: size, color, shape, feel, number.\n\nGame: Hold any object, child says 3 describing words!\n\nFun: Describe something without naming it. Others guess!",
+    exercises:[
+      {type:"mcq",q:"Find the describing word: 'The tall boy runs.'",options:["The","tall","boy","runs"],a:1,explain:"'Tall' describes the boy → adjective!"},
+      {type:"mcq",q:"Which is a describing word?",options:["run","beautiful","table","she"],a:1,explain:"Beautiful describes how something looks."},
+      {type:"mcq",q:"How many describing words: 'The small white cat sat on the old mat.'?",options:["1","2","3","4"],a:2,explain:"Small + white + old = 3 adjectives!"},
+      {type:"mcq",q:"Best word: 'The ___ ice cream melted.'",options:["cold","run","she","under"],a:0,explain:"Cold describes ice cream. Adjective!"},
+      {type:"yesno",q:"Is 'quickly' a describing word for a noun?",a:"no",explain:"Quickly describes a verb, not a noun."},
+      {type:"mcq",q:"'The lazy fox slept.' Describing word?",options:["fox","lazy","slept","day"],a:1,explain:"Lazy describes the fox. Adjective!"},
+    ]},
+  {id:10,title:"Comparisons (-er, -est)",icon:"📏",color:C.pink,
+    tip:"Two things: -er (taller)\nThree+ things: -est (tallest)\n\nSpecial: good→better→best\n\nPractice with family: tall, taller, tallest!",
+    exercises:[
+      {type:"mcq",q:"Ram is ___ than Shyam. (tall)",options:["taller","tallest","more tall","tall"],a:0,explain:"Two people → -er. Taller!"},
+      {type:"mcq",q:"Everest is the ___ mountain. (high)",options:["higher","highest","more high","high"],a:1,explain:"Most of ALL → -est. Highest!"},
+      {type:"mcq",q:"This book is ___ than that one. (big)",options:["biger","bigger","biggest","big"],a:1,explain:"Big → double g → bigger."},
+      {type:"mcq",q:"She is the ___ girl in class. (happy)",options:["happyer","happiest","most happy","happier"],a:1,explain:"Happy → change y to i → happiest."},
+      {type:"yesno",q:"Is 'gooder' correct for 'good'?",a:"no",explain:"Good → Better → Best. Not gooder!"},
+      {type:"mcq",q:"Cheetah is the ___ animal. (fast)",options:["faster","fastest","most fast","fast"],a:1,explain:"Most of ALL → fastest!"},
+    ]},
+  {id:11,title:"Doing Words (Verbs)",icon:"🏃",color:C.blue,
+    tip:"Verbs = action words (run, eat, jump, write)\n\nIf you can ACT it out → it's a verb!\n\nGame: Verb Charades — act it, others guess!",
+    exercises:[
+      {type:"mcq",q:"Find the verb: 'The boy eats an apple.'",options:["boy","eats","apple","The"],a:1,explain:"Eats = what the boy DOES. Verb!"},
+      {type:"mcq",q:"Which is a doing word?",options:["beautiful","table","singing","blue"],a:2,explain:"Singing = something you DO. Verb!"},
+      {type:"yesno",q:"Is 'sleeps' a doing word?",a:"yes",explain:"Yes! Sleeping is something you do."},
+      {type:"mcq",q:"All doing words?",options:["run, blue, cat","eat, sleep, drink","big, tall, fast","he, she, they"],a:1,explain:"Eat, sleep, drink — all actions!"},
+      {type:"mcq",q:"Doing word: 'The bird flies high.'?",options:["bird","flies","high","The"],a:1,explain:"Flies = what bird does. Verb!"},
+      {type:"yesno",q:"Is 'happy' a doing word?",a:"no",explain:"Happy = describing word, not a verb."},
+    ]},
+  {id:12,title:"Am, Is, Are",icon:"✅",color:C.green,
+    tip:"I → AM\nHe/She/It → IS\nYou/We/They → ARE\n\nChant: 'I AM, You ARE, He IS, She IS, We ARE, They ARE!'",
+    exercises:[
+      {type:"mcq",q:"I ___ a student.",options:["am","is","are"],a:0,explain:"I → AM."},
+      {type:"mcq",q:"She ___ my friend.",options:["am","is","are"],a:1,explain:"She → IS."},
+      {type:"mcq",q:"They ___ playing.",options:["am","is","are"],a:2,explain:"They → ARE."},
+      {type:"mcq",q:"The cat ___ sleeping.",options:["am","is","are"],a:1,explain:"Cat = It → IS."},
+      {type:"mcq",q:"We ___ going to school.",options:["am","is","are"],a:2,explain:"We → ARE."},
+      {type:"mcq",q:"The flowers ___ beautiful.",options:["am","is","are"],a:2,explain:"Flowers = They → ARE."},
+      {type:"mcq",q:"You ___ very smart!",options:["am","is","are"],a:2,explain:"You → ARE."},
+    ]},
+  {id:13,title:"Was, Were",icon:"⏪",color:C.purple,
+    tip:"Past tense: IS→WAS, ARE→WERE\n\nI/He/She/It → WAS\nYou/We/They → WERE\n\nTalk about yesterday using was/were!",
+    exercises:[
+      {type:"mcq",q:"I ___ at the park yesterday.",options:["was","were","am"],a:0,explain:"I → WAS."},
+      {type:"mcq",q:"They ___ very happy.",options:["was","were","is"],a:1,explain:"They → WERE."},
+      {type:"mcq",q:"She ___ a little girl then.",options:["was","were","are"],a:0,explain:"She → WAS."},
+      {type:"mcq",q:"The boys ___ playing cricket.",options:["was","were","is"],a:1,explain:"Boys = They → WERE."},
+      {type:"yesno",q:"Is 'You was late' correct?",a:"no",explain:"No! You → WERE. 'You were late.'"},
+      {type:"mcq",q:"We ___ in Class 1 last year.",options:["was","were","am"],a:1,explain:"We → WERE."},
+    ]},
+  {id:14,title:"Has, Have",icon:"🎒",color:C.teal,
+    tip:"He/She/It → HAS\nI/You/We/They → HAVE\n\nTrick: He HAS, She HAS — everyone else HAVE!",
+    exercises:[
+      {type:"mcq",q:"She ___ a beautiful dress.",options:["has","have"],a:0,explain:"She → HAS."},
+      {type:"mcq",q:"I ___ two brothers.",options:["has","have"],a:1,explain:"I → HAVE."},
+      {type:"mcq",q:"They ___ a big house.",options:["has","have"],a:1,explain:"They → HAVE."},
+      {type:"mcq",q:"The bird ___ colourful feathers.",options:["has","have"],a:0,explain:"Bird = It → HAS."},
+      {type:"yesno",q:"Is 'He have a pen' correct?",a:"no",explain:"No! He → HAS. 'He has a pen.'"},
+      {type:"mcq",q:"You ___ pretty eyes.",options:["has","have"],a:1,explain:"You → HAVE."},
+    ]},
+  {id:15,title:"Do, Does, Go, Goes",icon:"🚶",color:C.orange,
+    tip:"I/You/We/They → DO, GO\nHe/She/It → DOES, GOES\n\nChant: 'I DO, you DO — but he DOES and she DOES!'",
+    exercises:[
+      {type:"mcq",q:"She ___ to school by bus.",options:["go","goes"],a:1,explain:"She → GOES."},
+      {type:"mcq",q:"They ___ homework daily.",options:["do","does"],a:0,explain:"They → DO."},
+      {type:"mcq",q:"He ___ to the park.",options:["go","goes"],a:1,explain:"He → GOES."},
+      {type:"mcq",q:"I ___ not like cold coffee.",options:["do","does"],a:0,explain:"I → DO."},
+      {type:"yesno",q:"Is 'She do her work' correct?",a:"no",explain:"No! She → DOES. 'She does her work.'"},
+      {type:"mcq",q:"We ___ to temple on Tuesdays.",options:["go","goes"],a:0,explain:"We → GO."},
+    ]},
+  {id:16,title:"Am/Is/Are + -ing",icon:"🔄",color:C.blue,
+    tip:"Happening NOW: am/is/are + verb + ing\n\nDrop e: make→making, write→writing\nDouble letter: run→running, sit→sitting",
+    exercises:[
+      {type:"mcq",q:"She is ___ a book. (read)",options:["reading","readin","readding"],a:0,explain:"Read + ing = reading."},
+      {type:"mcq",q:"They are ___. (play)",options:["playing","plaing","playying"],a:0,explain:"Play + ing = playing."},
+      {type:"mcq",q:"I am ___ a letter. (write)",options:["writeing","writing","writting"],a:1,explain:"Drop the e! Write → writing."},
+      {type:"mcq",q:"He is ___ fast. (run)",options:["runing","running","runnnig"],a:1,explain:"Double the n! Run → running."},
+      {type:"mcq",q:"She is ___ a cake. (make)",options:["makeing","making","makking"],a:1,explain:"Drop the e! Make → making."},
+      {type:"mcq",q:"The baby is ___. (sleep)",options:["sleepping","sleeping","sleping"],a:1,explain:"Sleep + ing = sleeping."},
+    ]},
+  {id:17,title:"Position Words",icon:"📦",color:C.green,
+    tip:"in, on, under, behind, between, near, above, below\n\nUse a toy and box to practice all positions!\n\nGame: Treasure Hunt using position words!",
+    exercises:[
+      {type:"mcq",q:"The cat is ___ the table. (below)",options:["on","under","behind"],a:1,explain:"Under = below something."},
+      {type:"mcq",q:"The book is ___ the bag. (inside)",options:["on","in","under"],a:1,explain:"In = inside something."},
+      {type:"mcq",q:"She hides ___ the door.",options:["on","in","behind"],a:2,explain:"Behind = at the back of."},
+      {type:"mcq",q:"The ball is ___ two chairs.",options:["on","under","between"],a:2,explain:"Between = in the middle of two things."},
+      {type:"mcq",q:"My house is ___ the school. (close)",options:["near","under","on"],a:0,explain:"Near = close to."},
+      {type:"mcq",q:"The picture is ___ the wall.",options:["in","on","under"],a:1,explain:"On = on the surface of."},
+    ]},
+  {id:18,title:"Joining Words",icon:"🔗",color:C.purple,
+    tip:"and = adds (tea AND coffee)\nbut = contrast (small BUT brave)\nor = choice (tea OR coffee?)\nbecause = reason (BECAUSE it rained)",
+    exercises:[
+      {type:"mcq",q:"I like mangoes ___ oranges.",options:["and","but","or","because"],a:0,explain:"Adding two things → and."},
+      {type:"mcq",q:"She is small ___ very brave.",options:["and","but","or","because"],a:1,explain:"Contrast/surprise → but."},
+      {type:"mcq",q:"Do you want milk ___ juice?",options:["and","but","or","because"],a:2,explain:"Giving a choice → or."},
+      {type:"mcq",q:"I took umbrella ___ it was raining.",options:["and","but","or","because"],a:3,explain:"Giving reason → because."},
+      {type:"mcq",q:"Hurry up ___ you'll be late!",options:["and","but","or","because"],a:2,explain:"Consequence/alternative → or."},
+      {type:"mcq",q:"She cried ___ she lost her toy.",options:["and","but","or","because"],a:3,explain:"Reason → because."},
+    ]},
+  {id:19,title:"Statements & Questions",icon:"❓",color:C.teal,
+    tip:"Statement = tells something → full stop (.)\nQuestion = asks something → question mark (?)\n\nIf voice goes UP at end → probably a question!",
+    exercises:[
+      {type:"mcq",q:"'The sun is bright' — this is a:",options:["Statement (.)","Question (?)"],a:0,explain:"Tells us something → Statement."},
+      {type:"mcq",q:"'Where is my book' — needs a:",options:["Full stop (.)","Question mark (?)"],a:1,explain:"Asks something → Question mark."},
+      {type:"mcq",q:"'Can you help me' — this is a:",options:["Statement","Question"],a:1,explain:"Asks for help → Question."},
+      {type:"mcq",q:"Which is a question?",options:["I am hungry.","Are you hungry?","She is happy.","We play daily."],a:1,explain:"'Are you hungry?' asks something."},
+      {type:"yesno",q:"Does a statement end with '?'",a:"no",explain:"Statements end with full stop (.)"},
+      {type:"mcq",q:"'Birds fly in the sky' is a:",options:["Question","Statement"],a:1,explain:"Tells a fact → Statement."},
+    ]},
+  {id:20,title:"WH Questions",icon:"🤔",color:C.orange,
+    tip:"Who=person, What=thing, Where=place\nWhen=time, Why=reason, Which=choice\nHow=way/manner\n\nGame: Daily 'Question of the Day' at dinner!",
+    exercises:[
+      {type:"mcq",q:"___ is your name?",options:["Who","What","Where","When"],a:1,explain:"Name = thing → What."},
+      {type:"mcq",q:"___ do you live?",options:["Who","What","Where","When"],a:2,explain:"Place → Where."},
+      {type:"mcq",q:"___ is your best friend?",options:["Who","What","Where","When"],a:0,explain:"Person → Who."},
+      {type:"mcq",q:"___ is your birthday?",options:["Who","What","Where","When"],a:3,explain:"Time → When."},
+      {type:"mcq",q:"___ are you sad?",options:["Who","What","Why","Where"],a:2,explain:"Reason → Why."},
+      {type:"mcq",q:"___ colour — red or blue?",options:["Who","Which","Where","When"],a:1,explain:"Choice between options → Which."},
+      {type:"mcq",q:"___ do you go to school?",options:["Who","What","Where","How"],a:3,explain:"Way/method → How."},
+    ]},
+];
+
+function GrammarFunZone() {
+  const [view, setView] = useState("home");
+  const [selCh, setSelCh] = useState(null);
+  const [stars, setStars] = useState({});
+  const [qIdx, setQIdx] = useState(0);
+  const [selected, setSelected] = useState(null);
+  const [showResult, setShowResult] = useState(false);
+  const [score, setScore] = useState(0);
+  const [finished, setFinished] = useState(false);
+  const [streak, setStreak] = useState(0);
+
+  useEffect(() => {
+    (async()=>{try{const r=await window.storage.get("gstars");if(r?.value)setStars(JSON.parse(r.value));}catch(e){}})();
+  }, []);
+
+  const saveStars = async (chId, sc, total) => {
+    const s = sc >= total*0.9 ? 3 : sc >= total*0.6 ? 2 : sc >= total*0.3 ? 1 : 0;
+    if (s > (stars[chId]||0)) {
+      const next = {...stars,[chId]:s};
+      setStars(next);
+      try{await window.storage.set("gstars",JSON.stringify(next));}catch(e){}
+    }
+  };
+
+  const startExercise = (ch) => {
+    setSelCh(ch); setView("exercise"); setQIdx(0); setSelected(null);
+    setShowResult(false); setScore(0); setFinished(false); setStreak(0);
+  };
+
+  const checkAnswer = (ans) => {
+    const ex = selCh.exercises[qIdx];
+    setSelected(ans); setShowResult(true);
+    let correct = ex.type==="yesno" ? ans===ex.a : ans===ex.a;
+    if(correct){setScore(s=>s+1);setStreak(s=>s+1);}else{setStreak(0);}
+  };
+
+  const nextQ = () => {
+    const total = selCh.exercises.length;
+    if(qIdx+1>=total){setFinished(true);saveStars(selCh.id,score,total);}
+    else{setQIdx(qIdx+1);setSelected(null);setShowResult(false);}
+  };
+
+  const totalStars = Object.values(stars).reduce((a,b)=>a+b,0);
+
+  // HOME
+  if(view==="home") return React.createElement('div',null,
+    React.createElement('div',{style:{textAlign:"center",marginBottom:12}},
+      React.createElement('div',{style:{display:"inline-block",padding:"5px 14px",borderRadius:20,background:C.yellowBg,border:"1px solid #FDE68A",fontSize:12,fontWeight:800,color:C.yellow}},"⭐ "+totalStars+" / "+(CHAPTERS.length*3)+" Stars")
+    ),
+    React.createElement('div',{style:{display:"flex",flexDirection:"column",gap:6}},
+      CHAPTERS.map(ch => React.createElement('div',{key:ch.id,onClick:()=>{setSelCh(ch);setView("choose");},style:{padding:12,borderRadius:12,cursor:"pointer",background:C.card,border:`1px solid ${C.border}`,borderLeft:`4px solid ${ch.color}`,display:"flex",alignItems:"center",gap:8}},
+        React.createElement('span',{style:{fontSize:24}},ch.icon),
+        React.createElement('div',{style:{flex:1}},
+          React.createElement('div',{style:{fontSize:12,fontWeight:800,color:C.dark}},"Ch "+ch.id+". "+ch.title),
+          React.createElement('div',{style:{fontSize:10,color:C.light}},ch.exercises.length+" exercises")
+        ),
+        React.createElement('div',{style:{display:"flex",gap:1}},
+          [1,2,3].map(s=>React.createElement('span',{key:s,style:{fontSize:14,opacity:(stars[ch.id]||0)>=s?1:0.2}},"⭐"))
+        )
+      ))
+    ),
+    React.createElement('div',{style:{marginTop:12,padding:10,borderRadius:10,textAlign:"center",background:C.purpleBg,fontSize:11,color:"#5B21B6"}},"Ch 21-25 (Vocabulary, Comprehension, Composition) need writing practice. Ask Claude for worksheets!")
+  );
+
+  // CHOOSE
+  if(view==="choose") return React.createElement('div',null,
+    React.createElement('button',{onClick:()=>setView("home"),style:{background:"none",border:"none",cursor:"pointer",fontSize:12,color:C.purple,fontWeight:700,padding:0,marginBottom:10,fontFamily:"inherit"}},"← All Chapters"),
+    React.createElement('div',{style:{textAlign:"center",marginBottom:16}},
+      React.createElement('div',{style:{fontSize:36}},selCh.icon),
+      React.createElement('h3',{style:{fontSize:16,fontWeight:900,color:C.dark,margin:"4px 0"}},"Ch "+selCh.id+": "+selCh.title),
+      React.createElement('div',{style:{display:"flex",gap:2,justifyContent:"center",margin:"4px 0 12px"}},[1,2,3].map(s=>React.createElement('span',{key:s,style:{fontSize:18,opacity:(stars[selCh.id]||0)>=s?1:0.2}},"⭐")))
+    ),
+    React.createElement('button',{onClick:()=>setView("tip"),style:{width:"100%",padding:14,borderRadius:12,border:`2px solid ${C.yellow}`,cursor:"pointer",background:C.yellowBg,fontSize:13,fontWeight:800,color:C.yellow,fontFamily:"inherit",textAlign:"left",marginBottom:8}},"💡 Read Tips & How to Improve"),
+    React.createElement('button',{onClick:()=>startExercise(selCh),style:{width:"100%",padding:14,borderRadius:12,border:`2px solid ${C.purple}`,cursor:"pointer",background:C.purpleBg,fontSize:13,fontWeight:800,color:C.purple,fontFamily:"inherit",textAlign:"left"}},"🎮 Start Exercises ("+selCh.exercises.length+" questions)")
+  );
+
+  // TIPS
+  if(view==="tip") {
+    const sections = selCh.tip.split("\n\n");
+    return React.createElement('div',null,
+      React.createElement('button',{onClick:()=>setView("choose"),style:{background:"none",border:"none",cursor:"pointer",fontSize:12,color:C.purple,fontWeight:700,padding:0,marginBottom:10,fontFamily:"inherit"}},"← Back"),
+      React.createElement('div',{style:{padding:14,borderRadius:12,background:C.yellowBg,border:"1px solid #FDE68A"}},
+        React.createElement('div',{style:{fontSize:20,marginBottom:4}},selCh.icon),
+        React.createElement('h3',{style:{fontSize:15,fontWeight:900,color:C.dark,margin:"0 0 8px"}},"Tips: "+selCh.title),
+        React.createElement('div',{style:{fontSize:12,color:C.mid,lineHeight:"1.7"}},
+          sections.map((s,i)=>React.createElement('div',{key:i,style:{marginBottom:8,padding:i>0?"6px 8px":0,background:i>0?"rgba(255,255,255,0.6)":"transparent",borderRadius:6},dangerouslySetInnerHTML:{__html:s.replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br/>')}}))
+        )
+      )
+    );
+  }
+
+  // EXERCISE
+  if(view==="exercise") {
+    if(finished) {
+      const total=selCh.exercises.length;
+      const st=score>=total*0.9?3:score>=total*0.6?2:score>=total*0.3?1:0;
+      const msgs=["Keep practicing! 💪","Good effort! 🌟","Great job! 🎉","AMAZING! 🏆"];
+      return React.createElement('div',{style:{textAlign:"center",padding:16}},
+        React.createElement('div',{style:{fontSize:50}},st>=3?"🏆":st>=2?"🎉":"💪"),
+        React.createElement('h3',{style:{fontSize:18,fontWeight:900,color:C.dark,margin:"4px 0"}},msgs[st]),
+        React.createElement('div',{style:{fontSize:24,margin:"6px 0"}},[1,2,3].map(s=>React.createElement('span',{key:s,style:{opacity:st>=s?1:0.2}},"⭐"))),
+        React.createElement('div',{style:{fontSize:14,color:C.mid,marginBottom:14}},"Score: ",React.createElement('strong',{style:{color:C.green}},score)," / "+total),
+        React.createElement('div',{style:{display:"flex",gap:8,justifyContent:"center",flexWrap:"wrap"}},
+          React.createElement('button',{onClick:()=>setView("home"),style:{padding:"10px 18px",borderRadius:10,border:"none",cursor:"pointer",fontWeight:700,fontSize:12,background:C.purple,color:"#FFF",fontFamily:"inherit"}},"All Chapters"),
+          React.createElement('button',{onClick:()=>startExercise(selCh),style:{padding:"10px 18px",borderRadius:10,border:`2px solid ${C.purple}`,cursor:"pointer",fontWeight:700,fontSize:12,background:"transparent",color:C.purple,fontFamily:"inherit"}},"Try Again")
+        )
+      );
+    }
+
+    const ex=selCh.exercises[qIdx];
+    const total=selCh.exercises.length;
+    const isCorrect=ex.type==="yesno"?selected===ex.a:selected===ex.a;
+
+    return React.createElement('div',null,
+      React.createElement('button',{onClick:()=>setView("choose"),style:{background:"none",border:"none",cursor:"pointer",fontSize:12,color:C.purple,fontWeight:700,padding:0,marginBottom:8,fontFamily:"inherit"}},"← Back"),
+      // Progress
+      React.createElement('div',{style:{display:"flex",alignItems:"center",gap:6,marginBottom:10}},
+        React.createElement('div',{style:{flex:1,height:5,background:"#F1F5F9",borderRadius:5,overflow:"hidden"}},
+          React.createElement('div',{style:{height:"100%",borderRadius:5,width:`${((qIdx+1)/total)*100}%`,background:C.teal,transition:"width 0.3s"}})
+        ),
+        React.createElement('span',{style:{fontSize:10,fontWeight:700,color:C.mid}},(qIdx+1)+"/"+total),
+        streak>=2 && React.createElement('span',{style:{fontSize:11,fontWeight:800,color:C.gold}},"🔥"+streak)
+      ),
+      // Question
+      React.createElement('div',{style:{padding:14,borderRadius:12,marginBottom:10,background:C.purpleBg,border:"1px solid #C4B5FD"}},
+        React.createElement('div',{style:{fontSize:9,fontWeight:700,color:C.purple,marginBottom:3,textTransform:"uppercase"}},ex.type==="yesno"?"Yes or No?":"Choose the correct answer"),
+        React.createElement('div',{style:{fontSize:13,fontWeight:700,color:C.dark,lineHeight:"1.5"}},ex.q)
+      ),
+      // Options
+      ex.type==="mcq" && React.createElement('div',{style:{display:"flex",flexDirection:"column",gap:5}},
+        ex.options.map((opt,i)=>{
+          let bg=C.card,bd=C.border,tc=C.dark;
+          if(showResult){if(i===ex.a){bg=C.greenBg;bd=C.green;tc=C.green;}else if(i===selected&&i!==ex.a){bg=C.redBg;bd=C.red;tc=C.red;}}
+          else if(selected===i){bg=C.blueBg;bd=C.blue;}
+          return React.createElement('button',{key:i,onClick:()=>!showResult&&checkAnswer(i),disabled:showResult,style:{padding:"9px 12px",borderRadius:8,cursor:showResult?"default":"pointer",border:`2px solid ${bd}`,background:bg,fontSize:12,fontWeight:700,color:tc,textAlign:"left",fontFamily:"inherit"}},
+            String.fromCharCode(65+i)+". "+opt+(showResult&&i===ex.a?" ✓":"")+(showResult&&i===selected&&i!==ex.a?" ✗":"")
+          );
+        })
+      ),
+      ex.type==="yesno" && React.createElement('div',{style:{display:"flex",gap:8}},
+        ["yes","no"].map(opt=>{
+          let bg=C.card,bd=C.border,tc=C.dark;
+          if(showResult){if(opt===ex.a){bg=C.greenBg;bd=C.green;tc=C.green;}else if(opt===selected&&opt!==ex.a){bg=C.redBg;bd=C.red;tc=C.red;}}
+          return React.createElement('button',{key:opt,onClick:()=>!showResult&&checkAnswer(opt),disabled:showResult,style:{flex:1,padding:10,borderRadius:10,cursor:showResult?"default":"pointer",border:`2px solid ${bd}`,background:bg,fontSize:14,fontWeight:800,color:tc,fontFamily:"inherit"}},opt==="yes"?"👍 Yes":"👎 No");
+        })
+      ),
+      // Explanation
+      showResult && React.createElement('div',{style:{marginTop:10,padding:12,borderRadius:10,background:isCorrect?C.greenBg:C.orangeBg,border:`1px solid ${isCorrect?"#A7F3D0":"#FED7AA"}`}},
+        React.createElement('div',{style:{fontSize:12,fontWeight:800,color:isCorrect?C.green:C.orange,marginBottom:3}},isCorrect?"🎉 Correct!":"💡 Let's learn!"),
+        React.createElement('div',{style:{fontSize:11,color:C.dark,lineHeight:"1.5"}},ex.explain)
+      ),
+      showResult && React.createElement('button',{onClick:nextQ,style:{marginTop:10,width:"100%",padding:11,borderRadius:10,border:"none",cursor:"pointer",fontWeight:800,fontSize:13,background:C.purple,color:"#FFF",fontFamily:"inherit"}},qIdx+1>=total?"See Results →":"Next Question →")
+    );
+  }
+
+  return null;
+}
+
+// ═══════════════════════════════════════
+// MAIN APP SHELL
+// ═══════════════════════════════════════
+function App() {
+  const [page, setPage] = useState("home");
+
+  const pages = [
+    {id:"home",label:"Home",icon:"🏠"},
+    {id:"planner",label:"Daily Plan",icon:"🌞"},
+    {id:"grammar",label:"Grammar Fun",icon:"🎓"},
+  ];
+
+  if(page==="home") return React.createElement('div',{style:{minHeight:"100vh",background:C.bg}},
+    React.createElement('div',{style:{maxWidth:600,margin:"0 auto",padding:"20px 14px"}},
+      React.createElement('div',{style:{textAlign:"center",marginBottom:24}},
+        React.createElement('div',{style:{fontSize:48,marginBottom:4}},"📚"),
+        React.createElement('h1',{style:{fontSize:22,fontWeight:900,color:C.dark,margin:"0 0 4px",lineHeight:1.2}},"Class 1 Study Planner"),
+        React.createElement('p',{style:{fontSize:12,color:C.mid,margin:"0 0 16px"}},"A joyful home learning toolkit for your 6-7 year old")
+      ),
+      React.createElement('div',{style:{display:"flex",flexDirection:"column",gap:12}},
+        [{id:"planner",icon:"🌞",title:"Daily Study Planner",desc:"Weekday & weekend routines, weekly timetable, parent tips, fun activities",color:C.teal,bg:C.tealBg},
+         {id:"grammar",icon:"🎓",title:"Grammar Fun Zone",desc:"160+ interactive exercises across 20 chapters with tips & star rewards",color:C.purple,bg:C.purpleBg}
+        ].map(item => React.createElement('div',{key:item.id,onClick:()=>setPage(item.id),style:{padding:20,borderRadius:16,cursor:"pointer",background:item.bg,border:`2px solid ${item.color}22`,transition:"transform 0.15s"}},
+          React.createElement('div',{style:{fontSize:36,marginBottom:6}},item.icon),
+          React.createElement('div',{style:{fontSize:16,fontWeight:900,color:item.color}},item.title),
+          React.createElement('div',{style:{fontSize:12,color:C.mid,marginTop:4,lineHeight:"1.5"}},item.desc)
+        ))
+      ),
+      React.createElement('div',{style:{marginTop:20,padding:12,borderRadius:12,background:C.yellowBg,border:"1px solid #FDE68A",textAlign:"center",fontSize:11,color:"#92400E",lineHeight:"1.6"}},
+        React.createElement('strong',null,"Remember: "),"The goal is not perfection — it's building a love for learning. 💛"
+      )
+    )
+  );
+
+  return React.createElement('div',{style:{minHeight:"100vh",background:C.bg}},
+    // Top bar
+    React.createElement('div',{style:{position:"sticky",top:0,zIndex:100,background:C.dark,padding:"8px 12px",display:"flex",alignItems:"center",gap:8,boxShadow:"0 2px 8px rgba(0,0,0,0.2)"}},
+      React.createElement('button',{onClick:()=>setPage("home"),style:{background:"rgba(255,255,255,0.1)",border:"none",cursor:"pointer",padding:"6px 10px",borderRadius:8,fontSize:12,fontWeight:700,color:"#FFF",fontFamily:"inherit"}},"🏠 Home"),
+      pages.filter(p=>p.id!=="home").map(p => React.createElement('button',{key:p.id,onClick:()=>setPage(p.id),style:{padding:"6px 10px",borderRadius:8,border:"none",cursor:"pointer",fontWeight:700,fontSize:11,fontFamily:"inherit",background:page===p.id?"#7C3AED":"rgba(255,255,255,0.1)",color:page===p.id?"#FFF":"rgba(255,255,255,0.6)"}},p.icon+" "+p.label))
+    ),
+    // Content
+    React.createElement('div',{style:{maxWidth:600,margin:"0 auto",padding:"16px 14px"}},
+      React.createElement('div',{style:{background:C.card,borderRadius:16,padding:16,border:`1px solid ${C.border}`,boxShadow:"0 2px 8px rgba(0,0,0,0.04)"}},
+        page==="planner" && React.createElement(StudyPlanner,null),
+        page==="grammar" && React.createElement(GrammarFunZone,null)
+      )
+    )
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));
+</script>
+</body>
+</html>
